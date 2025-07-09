@@ -8,10 +8,12 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = Flask(__name__)
 
-@app.route('/nlp', methods=['POST'])
-def nlp():
+@app.route("/nlp", methods=["POST"])
+def nlp_route():
     data = request.get_json()
-    caller_text = data.get('SpeechResult', '')
+    text = data.get("SpeechResult", "")
+    intent = classify_intent(text)  # Your NLP logic
+    return jsonify({"intent": intent})
 
     if not caller_text:
         return jsonify({'error': 'No speech text provided'}), 400
