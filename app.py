@@ -30,7 +30,8 @@ def classify_intent(caller_text):
 
 @app.route("/nlp", methods=["POST"])
 def nlp_route():
-    data = request.get_json()
+    # Try to get JSON, if not present, fall back to form
+    data = request.get_json(silent=True) or request.form
     text = data.get("SpeechResult", "")
     intent, error = classify_intent(text)
     if error:
