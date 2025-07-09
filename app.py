@@ -4,27 +4,19 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-openai.api_key = os.getenv("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")
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = Flask(__name__)
 
-@app.route("/nlp", methods=["POST"])
-def nlp_route():
-    data = request.get_json()
-    text = data.get("SpeechResult", "")
-    intent = classify_intent(text)  # Your NLP logic
-    return jsonify({"intent": intent})
-
+def classify_intent(caller_text):
     if not caller_text:
-        return jsonify({'error': 'No speech text provided'}), 400
-
+        return None, "No speech text provided"
     prompt = (
         "You're an AI receptionist for a company. Based on this caller message, "
         "identify the most likely department they should speak to: Sales, Engineering, "
         "Lab, or Customer Service.\n\n"
         f"Caller message: '{caller_text}'\n\nReturn just the department name."
     )
-
     try:
         response = openai.ChatCompletion.create(
             model="gpt-4o",
@@ -32,13 +24,19 @@ def nlp_route():
             temperature=0.2,
         )
         department = response['choices'][0]['message']['content'].strip()
-        return jsonify({"intent": department})
-
+        return department, None
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return None, str(e)
+
+@app.route("/nlp", methods=["POST"])
+def nlp_route():
+    data = request.get_json()
+    text = data.get("SpeechResult", "")
+    intent, error = classify_intent(text)
+    if error:
+        return jsonify({'error': error}), 400
+    return jsonify({"intent": intent})
 
 if __name__ == '__main__':
-    import os
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
-
