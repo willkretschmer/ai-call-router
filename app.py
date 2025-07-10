@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 app = Flask(__name__)
 
@@ -18,12 +18,13 @@ def classify_intent(caller_text):
         f"Caller message: '{caller_text}'\n\nReturn just the department name."
     )
     try:
-        response = openai.ChatCompletion.create(
+        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
         )
-        department = response['choices'][0]['message']['content'].strip()
+        department = response.choices[0].message.content.strip()
         return department, None
     except Exception as e:
         return None, str(e)
