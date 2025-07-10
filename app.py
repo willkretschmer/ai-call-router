@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, Response, jsonify
+from twilio.twiml.voice_response import VoiceResponse, Gather
 import openai
 import os
 from dotenv import load_dotenv
@@ -7,9 +8,9 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
-
 app = Flask(__name__)
 
+# --- Your AI Intent Classifier ---
 def classify_intent(caller_text):
     if not caller_text:
         return None, "No speech text provided"
@@ -30,6 +31,51 @@ def classify_intent(caller_text):
     except Exception as e:
         return None, str(e)
 
+# --- Step 1: Answer the Call and Prompt ---
+@app.route("/voice", methods=["POST"])
+def voice():
+    resp = VoiceResponse()
+    gather = Gather(
+        input="speech",
+        action="/gather",
+        method="POST",
+        language="en-US",
+        timeout=5,
+        speechTimeout="auto"
+    )
+    gather.say("Thank you for calling. Please briefly tell me the reason for your call.")
+    resp.append(gather)
+    resp.say("Sorry, I didn't catch that. Goodbye.")
+    return Response(str(resp), mimetype="text/xml")
+
+# --- Step 2: Handle Gathered Speech, AI Routing, and Connect ---
+@app.route("/gather", methods=["POST"])
+def gather():
+    speech_result = request.values.get("SpeechResult", "")
+    department, error = classify_intent(speech_result)
+    resp = VoiceResponse()
+
+    if error or not department:
+        resp.say("Sorry, there was a problem understanding your request. Goodbye.")
+        return Response(str(resp), mimetype="text/xml")
+
+    # Routing logic: set these numbers appropriately!
+    department_numbers = {
+        "Sales": "+12345678901",
+        "Engineering": "+12345678902",
+        "Lab": "+12345678903",
+        "Customer Service": "+12345678904",
+    }
+
+    number = department_numbers.get(department)
+    if number:
+        resp.say(f"Connecting you to {department}.")
+        resp.dial(number)
+    else:
+        resp.say("Sorry, I couldn't determine the correct department. Goodbye.")
+    return Response(str(resp), mimetype="text/xml")
+
+# --- (Optional) Step 3: Your NLP endpoint for internal testing ---
 @app.route("/nlp", methods=["POST"])
 def nlp_route():
     data = request.get_json(silent=True) or request.form
