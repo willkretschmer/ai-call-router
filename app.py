@@ -31,6 +31,10 @@ def classify_intent(caller_text):
     except Exception as e:
         return None, str(e)
 
+@app.route("/")
+def index():
+    return "AI Call Router is running!"
+
 # --- Step 1: Answer the Call and Prompt ---
 @app.route("/voice", methods=["POST"])
 def voice():
